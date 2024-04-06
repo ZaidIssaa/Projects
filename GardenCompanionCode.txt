@@ -1,0 +1,202 @@
+#include <LiquidCrystal_I2C.h>
+#include <Servo.h>
+
+Servo myservo;
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// RGB LED pins
+int redPin = 5;
+int greenPin = 6;
+int bluePin = 7;
+
+void setup() {
+  lcd.begin();
+  lcd.backlight();
+  Serial.begin(9600);
+
+  myservo.attach(9);
+  myservo.write(0);
+
+  pinMode(redPin, OUTPUT);
+  pinMode(greenPin, OUTPUT);
+  pinMode(bluePin, OUTPUT);
+
+  // Define a single custom character for the loading animation
+  byte loading[8] = {B00000, B00000, B00000, B11111, B11111, B00000, B00000, B00000};
+  lcd.createChar(0, loading);
+
+  // Startup sequence
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Garden Companion");
+
+  // Display loading animation across the bottom row with green light flashing
+  for (int i = 0; i < 16; i++) {
+    lcd.setCursor(i, 1);
+    lcd.write(byte(0));
+
+    if(i % 2 == 0) {
+      analogWrite(greenPin, 255); // Turn on green LED
+    } else {
+      analogWrite(greenPin, 0); // Turn off green LED
+    }
+
+    delay(300); // Delay to simulate loading effect
+  }
+
+  // Welcome message with flashing dots
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Hi There!");
+  for (int dotCount = 0; dotCount < 3; dotCount++) {
+    lcd.print(".");
+    delay(500);
+  }
+
+  // Turn off LEDs after the startup sequence
+  analogWrite(redPin, 0);
+  analogWrite(greenPin, 0);
+  analogWrite(bluePin, 0);
+
+  delay(2000); // Pause before starting main functionality
+  lcd.clear(); // Clear the screen for the main program
+}
+
+void loop() {
+  int PhotoPin = analogRead(A0); // Phototresistor value input
+  int tempPin = analogRead(A1);  // Temperature value input
+  int SoilPin = analogRead(A2);  // Soil Moisture value input
+
+  Serial.println("Photo: ");
+  Serial.println(PhotoPin);
+  Serial.println("Temp: ");
+  Serial.println(tempPin);
+  Serial.println("Soil: ");
+  Serial.println(SoilPin);
+  delay(500);
+
+  evaluatePhotoresistor(PhotoPin);
+  evaluateTemperature(tempPin);
+  evaluateSoilMoisture(SoilPin);
+
+  myservo.write(60);
+  delay(5000);      
+  myservo.write(0);  
+  delay(5000);      
+}
+
+void evaluatePhotoresistor(int PhotoPin) {
+  lcd.clear();
+  if (PhotoPin < 60) {
+    lcd.print("Low light");
+    thumbdown();
+    setColor(255, 0, 0); // Red for low light
+  } else if (PhotoPin <= 150) {
+    lcd.print("Good light");
+    thumbsup();
+    setColor(0, 255, 0); // Green for good light
+  } else {
+    lcd.print("Extreme light");
+    thumbdown();
+    setColor(255, 0, 0); // Red for extreme light
+  }
+  delay(2000);
+}
+
+void evaluateTemperature(int tempPin) {
+  lcd.clear();
+  if (tempPin < 20) {
+    lcd.print("Cold");
+    thumbdown();
+    setColor(255, 0, 0); // Red for cold
+  } else if (20 <= tempPin && tempPin <= 25) {
+    lcd.print("Warm");
+    thumbsup();
+    setColor(0, 255, 0); // Green for warm
+  } else {
+    lcd.print("Too Hot");
+    thumbdown();
+    setColor(255, 0, 0); // Red for too hot
+  }
+  delay(2000);
+}
+
+void evaluateSoilMoisture(int SoilPin) {
+  lcd.clear();
+  if (SoilPin < 200) {
+    lcd.print("Soil is Dry");
+    thumbdown();
+    setColor(255, 0, 0); // Red for dry soil
+  } else if (300 <= SoilPin && SoilPin <= 770) {
+    lcd.print("Soil is Humid");
+    thumbsup();
+    setColor(0, 255, 0); // Green for humid soil
+  } else {
+    lcd.print("Soil is Too wet");
+    thumbdown();
+    setColor(255, 0, 0); // Red for too wet soil
+  }
+  delay(2000);
+}
+
+
+
+void setColor(int redValue, int greenValue, int blueValue) {
+  analogWrite(redPin, redValue);
+  analogWrite(greenPin, greenValue);
+  analogWrite(bluePin, blueValue);
+}
+
+void thumbsup() {
+   byte thumb1[8] = {B00100,B00011,B00100,B00011,B00100,B00011,B00010,B00001};
+  byte thumb2[8] = {B00000,B00000,B00000,B00000,B00000,B00000,B00000,B00011};
+  byte thumb3[8] = {B00000,B00000,B00000,B00000,B00000,B00000,B00001,B11110};
+  byte thumb4[8] = {B00000,B01100,B10010,B10010,B10001,B01000,B11110,B00000};
+  byte thumb5[8] = {B00010,B00010,B00010,B00010,B00010,B01110,B10000,B00000};
+  byte thumb6[8] = {B00000,B00000,B00000,B00000,B00000,B10000,B01000,B00110};
+  lcd.createChar(0, thumb1);
+  lcd.createChar(1, thumb2);
+  lcd.createChar(2, thumb3);
+  lcd.createChar(3, thumb4);
+  lcd.createChar(4, thumb5);
+  lcd.createChar(5, thumb6);
+  lcd.setCursor(12,1);
+  lcd.write(0);
+  lcd.setCursor(12,0);
+  lcd.write(1);
+  lcd.setCursor(13,1);
+  lcd.write(2);
+  lcd.setCursor(13,0);
+  lcd.write(3);
+  lcd.setCursor(14,1);
+  lcd.write(4);
+  lcd.setCursor(14,0);
+  lcd.write(5);
+}
+
+void thumbdown() {
+  byte thumb1[8] = {B00001,B00010,B00011,B00100,B00011,B00100,B00011,B00100};
+  byte thumb2[8] = {B00011,B00000,B00000,B00000,B00000,B00000,B00000,B00000};
+  byte thumb3[8] = {B11110,B00001,B00000,B00000,B00000,B00000,B00000,B00000};
+  byte thumb4[8] = {B00000,B11110,B01000,B10001,B10010,B10010,B01100,B00000};
+  byte thumb5[8] = {B00000,B10000,B01110,B00010,B00010,B00010,B00010,B00010};
+  byte thumb6[8] = {B00110,B01000,B10000,B00000,B00000,B00000,B00000,B00000};
+  lcd.createChar(0, thumb1);
+  lcd.createChar(1, thumb2);
+  lcd.createChar(2, thumb3);
+  lcd.createChar(3, thumb4);
+  lcd.createChar(4, thumb5);
+  lcd.createChar(5, thumb6);
+  lcd.setCursor(13,0);
+  lcd.write(0);
+  lcd.setCursor(13,1);
+  lcd.write(1);
+  lcd.setCursor(14,0);
+  lcd.write(2);
+  lcd.setCursor(14,1);
+  lcd.write(3);
+  lcd.setCursor(15,0);
+  lcd.write(4);
+  lcd.setCursor(15,1);
+  lcd.write(5);
+}
